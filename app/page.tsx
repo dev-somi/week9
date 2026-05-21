@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { scanFile, scanUrl } from '@/services/scan'
+import { scanFile, scanUrl, scanText } from '@/services/scan'
 import { useScanStore } from "@/store/scanStore"
 
 
@@ -16,6 +16,8 @@ export default function Home() {
   const setResults = useScanStore((state) => state.setResults)
   const [githubUrl, setGithubUrl] = useState("")
   const [loadingStep, setLoadingStep] = useState(0)
+  const [codeText, setCodeText] = useState("")
+  const [codeLanguage, setCodeLanguage] = useState(".py")
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -49,6 +51,24 @@ export default function Home() {
     setTimeout(() => setLoadingStep(2), 1000)
 
     const res = await scanUrl(githubUrl)
+    setLoadingStep(3) // 분석 완료
+
+    setTimeout(() => {
+      setIsLoading(false)
+      setResults(res.data)
+      router.push("/report")
+    }, 500)
+  }
+
+  const handleCodeScan = async () => {
+    if (!codeText.trim()) return
+
+    setIsLoading(true)
+    setLoadingStep(1) // 코드 업로드 중
+
+    setTimeout(() => setLoadingStep(2), 1000)
+
+    const res = await scanText(codeText, codeLanguage)
     setLoadingStep(3) // 분석 완료
 
     setTimeout(() => {
@@ -168,29 +188,53 @@ export default function Home() {
 
                 {/* 코드 직접 입력 — 와이드 패널 (Miro Coral Pastel) */}
                 <div className="bg-miro-coral-light p-8 rounded-[28px] border border-miro-coral/20 mb-6 transition-all hover:translate-y-[-2px]">
-                  <div className="flex items-center gap-4 mb-5">
-                    <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-miro-coral-dark flex-shrink-0">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="16 18 22 12 16 6" />
-                        <polyline points="8 6 2 12 8 18" />
-                      </svg>
+                  <div className="flex items-center justify-between gap-4 mb-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-miro-coral-dark flex-shrink-0">
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="16 18 22 12 16 6" />
+                          <polyline points="8 6 2 12 8 18" />
+                        </svg>
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-xl font-semibold">코드 직접 입력</h3>
+                        <p className="text-miro-coral-dark/70 text-sm">코드를 붙여넣어 즉시 분석</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <h3 className="text-xl font-semibold">코드 직접 입력</h3>
-                      <p className="text-miro-coral-dark/70 text-sm">코드를 붙여넣어 즉시 분석</p>
-                    </div>
+
+                    {/* 언어 선택 pill 드롭다운 */}
+                    <select
+                      value={codeLanguage}
+                      onChange={(e) => setCodeLanguage(e.target.value)}
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-white border border-miro-coral/30 rounded-full text-sm text-miro-blue font-medium focus:outline-none focus:border-miro-blue-action cursor-pointer disabled:opacity-50"
+                    >
+                      <option value=".py">Python</option>
+                      <option value=".js">JavaScript</option>
+                      <option value=".ts">TypeScript</option>
+                      <option value=".java">Java</option>
+                      <option value=".go">Go</option>
+                      <option value=".c">C</option>
+                      <option value=".cpp">C++</option>
+                      <option value=".rb">Ruby</option>
+                      <option value=".php">PHP</option>
+                    </select>
                   </div>
                   <textarea
-                    className="w-full h-36 px-4 py-3 bg-white border border-miro-coral/30 rounded-xl text-sm text-miro-blue resize-none focus:outline-none focus:border-miro-blue-action font-mono placeholder:text-miro-coral-dark/40"
+                    value={codeText}
+                    onChange={(e) => setCodeText(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full h-36 px-4 py-3 bg-white border border-miro-coral/30 rounded-xl text-sm text-miro-blue resize-none focus:outline-none focus:border-miro-blue-action font-mono placeholder:text-miro-coral-dark/40 disabled:opacity-60"
                     placeholder="// 여기에 코드를 붙여넣으세요..."
-                    disabled
                   />
                   <div className="flex justify-end mt-4">
                     <button
-                      className="px-8 py-3 bg-miro-blue text-white rounded-full font-medium text-sm opacity-50 cursor-not-allowed"
-                      disabled
+                      type="button"
+                      onClick={handleCodeScan}
+                      disabled={isLoading || !codeText.trim()}
+                      className="px-8 py-3 bg-miro-blue text-white rounded-full font-medium text-sm hover:bg-zinc-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      분석 시작하기 →
+                      {isLoading ? "분석 중..." : "분석 시작하기 →"}
                     </button>
                   </div>
                 </div>
